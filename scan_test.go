@@ -166,6 +166,23 @@ func TestIntVar(t *testing.T) {
 	}
 }
 
+func TestStringVar(t *testing.T) {
+	sqlQuery := "select 'moshe'"
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var foo string
+		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if foo != "moshe" {
+				t.Errorf("foo should be moshe: '%v'", foo)
+			}
+		}
+
+	}
+}
+
 func TestPointerIntVar(t *testing.T) {
 	sqlQuery := "select 123"
 	if conn, err := GetDbConnection(); err != nil {
@@ -176,6 +193,23 @@ func TestPointerIntVar(t *testing.T) {
 			t.Error(err)
 		} else {
 			if *foo != 123 {
+				t.Errorf("foo should be 123: '%v'", foo)
+			}
+		}
+
+	}
+}
+
+func TestPointerStringVar(t *testing.T) {
+	sqlQuery := "select 'foofoo'"
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var foo *string
+		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if *foo != "foofoo" {
 				t.Errorf("foo should be 123: '%v'", foo)
 			}
 		}

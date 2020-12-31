@@ -41,6 +41,51 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 					      name and row number maybe, for example when getting a float to float64 instead of pg.Numeric
 					*/
 					switch val.(type) {
+					case pgtype.TextArray:
+						myVal := val.(pgtype.TextArray)
+						var arr []string
+						if err := myVal.AssignTo(&arr); err != nil {
+							return errors.Errorf("could not assign pgtype.TextArray: %v", err)
+						} else {
+							switch structColumn.Kind() {
+							case reflect.Slice:
+								if !structColumn.CanAddr() {
+									return errors.New("cannot get address of slice element for pgtype.TextArray")
+								} else {
+									structColumn.Set(reflect.MakeSlice(structColumn.Type(), len(arr), len(arr)))
+									for idx, _ := range arr {
+										switch structColumn.Type().Elem().Kind() {
+										case reflect.Ptr:
+											structColumn.Index(idx).Set(reflect.ValueOf(&arr[idx]))
+										case reflect.String:
+											structColumn.Index(idx).Set(reflect.ValueOf(arr[idx]))
+										default:
+											return errors.New("unknown type when appending to slice")
+										}
+									}
+								}
+							default:
+								structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+							}
+						}
+
+					case pgtype.Int4Array:
+						myVal := val.(pgtype.Int4Array)
+						var arr []int
+						if err := myVal.AssignTo(&arr); err != nil {
+							return errors.Errorf("could not assign pgtype.Int4Array: %v", err)
+						} else {
+							switch structColumn.Kind() {
+							case reflect.Slice:
+								if !structColumn.CanAddr() {
+									return errors.New("cannot get address of slice element for pgtype.Int4Array")
+								} else if err := myVal.AssignTo(structColumn.Addr().Interface()); err != nil {
+									return errors.Errorf("could not scan to slice: %v", err)
+								}
+							default:
+								structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+							}
+						}
 					case pgtype.Numeric:
 						myVal := val.(pgtype.Numeric)
 						switch structColumn.Kind() {
@@ -55,6 +100,24 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 						default:
 							return errors.Errorf("uknown format %v", structColumn.Kind())
 						}
+					case pgtype.Float8Array:
+						myVal := val.(pgtype.Float8Array)
+						var arr []float64
+						if err := myVal.AssignTo(&arr); err != nil {
+							return errors.Errorf("could not assign pgtype.Float8Array: %v", err)
+						} else {
+							switch structColumn.Kind() {
+							case reflect.Slice:
+								if !structColumn.CanAddr() {
+									return errors.New("cannot get address of slice element for pgtype.Int4Array")
+								} else if err := myVal.AssignTo(structColumn.Addr().Interface()); err != nil {
+									return errors.Errorf("could not scan to slice: %v", err)
+								}
+							default:
+								structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+							}
+						}
+
 					default:
 						structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 					}

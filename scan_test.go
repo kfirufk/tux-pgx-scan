@@ -17,14 +17,25 @@ const (
 )
 
 type fooTest struct {
-	I1  int
-	I2  *int
-	S1  string
-	S2  *string
-	F1  pgtype.Numeric
-	F2  *pgtype.Numeric
-	Ff1 float64
-	Ff2 *float64
+	I1   int
+	I2   *int
+	S1   string
+	S2   *string
+	F1   pgtype.Numeric
+	F2   *pgtype.Numeric
+	Ff1  float64
+	Ff2  *float64
+	Ia1  []int
+	Ia2  []*int
+	Ia3  *[]int
+	Sa1  []string
+	Sa2  []*string
+	Sa3  *[]string
+	Fa1  pgtype.Float8Array
+	Fa2  *pgtype.Float8Array
+	Faf1 []float64
+	Faf2 []*float64
+	Faf3 *[]float64
 }
 
 func GetDbConnection() (*pgxpool.Pool, error) {
@@ -35,13 +46,54 @@ func GetDbConnection() (*pgxpool.Pool, error) {
 }
 
 func TestBasicTypesInStruct(t *testing.T) {
+	sqlQuery := `select 1 as i1, 2 as i2, 'a' as s1, 'b' as s2, 5.2 as f1, 5.4 as f2, 6.1 as ff1, 6.2 as ff2,
+       '{1,2}'::int[] as ia1,'{3,4}'::int[] as ia2, '{6,7}'::int[] as ia3, '{foo,bar}'::text[] as sa1,
+       '{moshe,haim}'::text[] as sa2, '{moshe2,haim2}'::text[] as sa3, '{3.3,2.3}'::float[] as fa1,
+       '{4.5,6.43}'::float[] as fa2,'{1.123,2.342}'::float[] as faf1,'{63.233,6.245}'::float[] as faf2,
+       '{2.222,54.32}'::float[] as faf3;`
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var bar fooTest
-		if err := MyQuery(context.Background(), conn, &bar, "select 1 as i1, 2 as i2,  'a' as s1, 'b' as s2, 5.2 as f1, 5.4 as f2, 6.1 as ff1, 6.2 as ff2"); err != nil {
+		if err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
+			if bar.Faf1[0] != 1.123 || bar.Faf1[1] != 2.342 {
+				t.Errorf("foo.Faf1([]float64) != {1.123,2.342}")
+			}
+			if *bar.Faf2[0] != 63.233 || *bar.Faf2[1] != 6.245 {
+				t.Errorf("foo.Faf2([]*float64) != {63.233,6.245}")
+			}
+			if (*bar.Faf3)[0] != 2.222 || (*bar.Faf3)[1] != 54.32 {
+				t.Errorf("foo.Faf3([]*float64) != {2.222,54.34}")
+			}
+			if bar.Fa1.Elements[0].Float != 3.3 || bar.Fa1.Elements[1].Float != 2.3 {
+				t.Errorf("foo.Fa1(pgtype.Float8Array) != {3.3,2.3}")
+			}
+			if bar.Fa2.Elements[0].Float != 4.5 || bar.Fa2.Elements[1].Float != 6.43 {
+				t.Errorf("foo.Fa2(pgtype.Float8Array) != {4.5,6.43}")
+			}
+
+			if *bar.Ia2[0] != 3 || *bar.Ia2[1] != 4 {
+				t.Errorf("foo.Ia2([]*int) != {3,4}")
+			}
+			if (*bar.Ia3)[0] != 6 || (*bar.Ia3)[1] != 7 {
+				t.Errorf("foo.Ia3(*[]int) != {6,7}")
+			}
+			if bar.Sa1[0] != "foo" || bar.Sa1[1] != "bar" {
+				t.Errorf("foo.Sa1([]string) != {foo,bar}")
+			}
+
+			if *bar.Sa2[0] != "moshe" || *bar.Sa2[1] != "haim" {
+				t.Errorf("foo.Sa2([]*string) != {moshe,haim}")
+			}
+			if (*bar.Sa3)[0] != "moshe2" || (*bar.Sa3)[1] != "haim2" {
+				t.Errorf("foo.Sa3(*[]string) != {moshe,haim}")
+			}
+
+			if bar.Ia1[0] != 1 || bar.Ia1[1] != 2 {
+				t.Errorf("foo.Ia1([]int) != {1,2}")
+			}
 			if bar.I1 != 1 {
 				t.Error("foo.I1(int) != 1")
 			}

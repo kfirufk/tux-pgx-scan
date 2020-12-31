@@ -8,5 +8,4 @@ require (
 	github.com/jackc/pgtype v1.6.2
 	github.com/jackc/pgx/v4 v4.10.1
 	github.com/pkg/errors v0.8.1
-	github.com/r3labs/diff/v2 v2.9.1
 )

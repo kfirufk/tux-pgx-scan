@@ -148,3 +148,37 @@ func TestBasicTypesInStuctInSlice(t *testing.T) {
 		}
 	}
 }
+
+func TestIntVar(t *testing.T) {
+	sqlQuery := "select 123"
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var foo int
+		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if foo != 123 {
+				t.Errorf("foo should be 123: '%v'", foo)
+			}
+		}
+
+	}
+}
+
+func TestPointerIntVar(t *testing.T) {
+	sqlQuery := "select 123"
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var foo *int
+		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if *foo != 123 {
+				t.Errorf("foo should be 123: '%v'", foo)
+			}
+		}
+
+	}
+}

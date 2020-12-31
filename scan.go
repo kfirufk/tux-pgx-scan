@@ -140,7 +140,6 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 				for sliceElm.Len() < rowNumber {
 					newItem := reflect.New(sliceElm.Type().Elem())
 					sliceElm.Set(reflect.Append(sliceElm, newItem.Elem()))
-
 				}
 				currentElement = barAddrVal.Elem().Index(rowNumber - 1)
 				if !currentElement.IsValid() {
@@ -163,7 +162,14 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 							return err
 						}
 					default:
-						return errors.New("not supported")
+						f := barAddrVal
+						for f.Elem().Kind() == reflect.Ptr {
+							if f.Elem().IsZero() {
+								f.Elem().Set(reflect.New(f.Type().Elem().Elem()))
+							}
+							f = f.Elem()
+						}
+						f.Elem().Set(reflect.ValueOf(val).Convert(f.Elem().Type()))
 					}
 
 				}

@@ -1,4 +1,4 @@
-package main
+package tux_pgx_scan
 
 import (
 	"context"
@@ -162,14 +162,21 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 							return err
 						}
 					default:
-						f := barAddrVal
-						for f.Elem().Kind() == reflect.Ptr {
+						f := currentElement
+						for f.Type().Kind() == reflect.Ptr && f.Elem().Kind() == reflect.Ptr {
 							if f.Elem().IsZero() {
 								f.Elem().Set(reflect.New(f.Type().Elem().Elem()))
 							}
 							f = f.Elem()
 						}
-						f.Elem().Set(reflect.ValueOf(val).Convert(f.Elem().Type()))
+						if f.Kind() == reflect.Ptr {
+							if f.IsZero() {
+								f.Set(reflect.New(f.Type().Elem()))
+							}
+							f.Elem().Set(reflect.ValueOf(val).Convert(f.Type().Elem()))
+						} else {
+							f.Set(reflect.ValueOf(val).Convert(f.Type()))
+						}
 					}
 
 				}

@@ -1,4 +1,4 @@
-package main
+package tux_pgx_scan
 
 import (
 	"context"

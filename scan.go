@@ -9,10 +9,6 @@ import (
 	"reflect"
 )
 
-func doSliceProperty(originalColumnName string, currentSliceElement reflect.Value, val interface{}) error {
-	return nil
-}
-
 func getStructProperty(columnName string, structElement reflect.Value) (reflect.Value, error) {
 	columnNameParsed := strcase.ToCamel(columnName)
 	structColumn := structElement.FieldByName(columnNameParsed)
@@ -21,6 +17,14 @@ func getStructProperty(columnName string, structElement reflect.Value) (reflect.
 	} else {
 		return structColumn, nil
 	}
+}
+
+func doSliceProperty(originalColumnName string, currentSliceElement reflect.Value, val interface{}) error {
+	if currentSliceElement.IsZero() {
+		//currentSliceElement.Set(reflect.New(currentSliceElement.Type()).Elem())
+		currentSliceElement.Set(reflect.ValueOf(val).Convert(currentSliceElement.Type()))
+	}
+	return nil
 }
 
 func doStructColumnProperty(originalColumnName string, currentElement reflect.Value, val interface{}) error {
@@ -121,7 +125,13 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 		}
 
 	default:
-		structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+		if reflect.TypeOf(val).Kind() == reflect.Slice && structColumn.Kind() == reflect.Slice {
+			if err := doSliceProperty(originalColumnName, structColumn, val); err != nil {
+				return err
+			}
+		} else {
+			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+		}
 	}
 	return nil
 }
@@ -152,13 +162,12 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 				fields := rows.FieldDescriptions()
 				for idx, column := range fields {
 					val := values[idx]
+					if val == nil {
+						continue
+					}
 					switch currentElement.Kind() {
 					case reflect.Struct:
 						if err := doStructColumnProperty(string(column.Name), currentElement, val); err != nil {
-							return err
-						}
-					case reflect.Slice:
-						if err := doSliceProperty(string(column.Name), currentElement, val); err != nil {
 							return err
 						}
 					default:

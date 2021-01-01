@@ -7,5 +7,6 @@ require (
 	github.com/iancoleman/strcase v0.1.2
 	github.com/jackc/pgtype v1.6.2
 	github.com/jackc/pgx/v4 v4.10.1
+	github.com/lib/pq v1.3.0
 	github.com/pkg/errors v0.8.1
 )

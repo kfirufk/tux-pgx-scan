@@ -2,12 +2,16 @@ package tux_pgx_scan
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/lib/pq"
+	"log"
 	"math/big"
 	"testing"
+	"time"
 )
 
 const (
@@ -51,6 +55,34 @@ type fooTest struct {
 	Faf1 []float64
 	Faf2 []*float64
 	Faf3 *[]float64
+}
+
+type Profile struct {
+	Name      string          `json:"name"`
+	Articles  []*Article      `json:"articles"`
+	Cocktails []*CocktailInfo `json:"cocktails"`
+	JoinedAt  time.Time       `json:"joined_at"`
+	Bio       *string         `json:"bio"`
+}
+
+type Article struct {
+	AddedBy    *string        `json:"added_by"`
+	ProfileDir string         `json:"profile_dir"`
+	Title      string         `json:"title"`
+	Ratings    *sql.NullInt64 `json:"ratings"`
+	Desc       string         `json:"desc"`
+	Source     *string        `json:"source"`
+	Content    string         `json:"content"`
+	CreatedAt  time.Time      `json:"created_at"`
+}
+
+type CocktailInfo struct {
+	Name       string         `json:"name"`
+	BasedOn    pq.StringArray `json:"based_on"`
+	AddedBy    *string        `json:"added_by"`
+	ProfileDir *string        `json:"profile_dir"`
+	Ratings    *sql.NullInt64 `json:"ratings"`
+	CreatedAt  time.Time      `json:"created_at"`
 }
 
 func GetDbConnection() (*pgxpool.Pool, error) {
@@ -214,5 +246,18 @@ func TestPointerStringVar(t *testing.T) {
 			}
 		}
 
+	}
+}
+
+func TestComplexStruct(t *testing.T) {
+	sqlQuery := `select name,joined_at::timestamptz,bio,articles,cocktails from mycocktailworld.user_profiles where profile_dir=$1`
+	var profile Profile
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		if err := MyQuery(context.Background(), conn, &profile, sqlQuery, "DjUFK"); err != nil {
+			t.Error(err)
+		}
+		log.Print("a")
 	}
 }

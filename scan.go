@@ -2,29 +2,27 @@ package tux_pgx_scan
 
 import (
 	"context"
+	"database/sql"
 	"github.com/iancoleman/strcase"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"reflect"
+	"time"
 )
 
+func getStructPropertyName(columnName string) string {
+	return strcase.ToCamel(columnName)
+}
+
 func getStructProperty(columnName string, structElement reflect.Value) (reflect.Value, error) {
-	columnNameParsed := strcase.ToCamel(columnName)
+	columnNameParsed := getStructPropertyName(columnName)
 	structColumn := structElement.FieldByName(columnNameParsed)
 	if !structColumn.IsValid() {
 		return reflect.Value{}, errors.Errorf("row returned column name %v which was not found in the destination address", columnName)
 	} else {
 		return structColumn, nil
 	}
-}
-
-func doSliceProperty(originalColumnName string, currentSliceElement reflect.Value, val interface{}) error {
-	if currentSliceElement.IsZero() {
-		//currentSliceElement.Set(reflect.New(currentSliceElement.Type()).Elem())
-		currentSliceElement.Set(reflect.ValueOf(val).Convert(currentSliceElement.Type()))
-	}
-	return nil
 }
 
 func doStructColumnProperty(originalColumnName string, currentElement reflect.Value, val interface{}) error {
@@ -47,6 +45,32 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 	      name and row number maybe, for example when getting a float to float64 instead of pg.Numeric
 	*/
 	switch val.(type) {
+	case string:
+		switch structColumn.Interface().(type) {
+		case time.Time:
+			myVal := val.(string)
+			if theTime, err := time.Parse(time.RFC3339, myVal); err != nil {
+				return err
+			} else {
+				structColumn.Set(reflect.ValueOf(theTime))
+
+			}
+		default:
+			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+		}
+
+	case float64:
+		myVal := val.(float64)
+		switch structColumn.Interface().(type) {
+		case sql.NullInt64:
+			s := sql.NullInt64{
+				Int64: int64(myVal),
+				Valid: true,
+			}
+			structColumn.Set(reflect.ValueOf(s))
+		default:
+			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+		}
 	case pgtype.TextArray:
 		myVal := val.(pgtype.TextArray)
 		var arr []string
@@ -92,6 +116,10 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 				structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 			}
 		}
+	case sql.NullInt64:
+		myVal := val.(sql.NullInt64)
+		val := myVal.Int64
+		structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 	case pgtype.Numeric:
 		myVal := val.(pgtype.Numeric)
 		switch structColumn.Kind() {
@@ -126,11 +154,79 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 
 	default:
 		if reflect.TypeOf(val).Kind() == reflect.Slice && structColumn.Kind() == reflect.Slice {
-			if err := doSliceProperty(originalColumnName, structColumn, val); err != nil {
+			if err := doSliceProperty(structColumn, val); err != nil {
 				return err
 			}
 		} else {
 			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+		}
+	}
+	return nil
+}
+
+func doSliceProperty(currentSliceElement reflect.Value, val interface{}) error {
+	if reflect.TypeOf(val).Kind() != reflect.Slice {
+		return errors.New("doSliceProperty got an element which is not a slice")
+	}
+	if currentSliceElement.IsZero() {
+		//currentSliceElement.Set(reflect.New(currentSliceElement.Type()).Elem())
+		//		currentSliceElement.Set(reflect.ValueOf(val).Convert(currentSliceElement.Type()))
+	}
+	rows := val.([]interface{})
+	rowNumber := 0
+	for _, row := range rows {
+		rowNumber++
+		var currentElement reflect.Value
+		sliceElm := currentSliceElement
+		for sliceElm.Len() < rowNumber {
+			currentElement = reflect.New(sliceElm.Type().Elem())
+			sliceElm.Set(reflect.Append(sliceElm, currentElement.Elem()))
+		}
+		if !currentElement.IsValid() {
+			return errors.New("slice item source is not valid")
+		}
+		if currentElement.Kind() == reflect.Interface {
+			currentElement = reflect.ValueOf(currentElement.Kind())
+		}
+		rowVal := reflect.ValueOf(row)
+		for _, columnNameVal := range rowVal.MapKeys() {
+			columnName := columnNameVal.Interface().(string)
+			myVal := rowVal.MapIndex(columnNameVal).Interface()
+			if myVal == nil {
+				continue
+			}
+			for currentElement.Kind() == reflect.Ptr {
+				if currentElement.IsZero() {
+					currentElement.Set(reflect.New(currentElement.Type().Elem()))
+				}
+				currentElement = currentElement.Elem()
+			}
+			switch currentElement.Kind() {
+			case reflect.Struct:
+				if err := doStructColumnProperty(columnName, currentElement, myVal); err != nil {
+					return err
+				}
+			default:
+				f := currentElement
+				for f.Type().Kind() == reflect.Ptr && f.Elem().Kind() == reflect.Ptr {
+					if f.Elem().IsZero() {
+						f.Elem().Set(reflect.New(f.Type().Elem().Elem()))
+					}
+					f = f.Elem()
+				}
+				if f.Kind() == reflect.Ptr {
+					if f.IsZero() {
+						f.Set(reflect.New(f.Type().Elem()))
+					}
+					f.Elem().Set(reflect.ValueOf(myVal).Convert(f.Type().Elem()))
+				} else {
+					f.Set(reflect.ValueOf(myVal))
+					if f.IsZero() {
+
+					}
+				}
+			}
+
 		}
 	}
 	return nil
@@ -141,6 +237,7 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 	if rows, err := conn.Query(ctx, sql, args...); err != nil {
 		return errors.Errorf("could not select from db: %v", err)
 	} else {
+		defer rows.Close()
 		currentElement := barAddrVal.Elem()
 		rowNumber := 0
 		for rows.Next() {

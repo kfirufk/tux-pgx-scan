@@ -182,12 +182,6 @@ func doSliceProperty(currentSliceElement reflect.Value, val interface{}) error {
 			currentElement = reflect.New(sliceElm.Type().Elem())
 			sliceElm.Set(reflect.Append(sliceElm, currentElement.Elem()))
 		}
-		if !currentElement.IsValid() {
-			return errors.New("slice item source is not valid")
-		}
-		if currentElement.Kind() == reflect.Interface {
-			currentElement = reflect.ValueOf(currentElement.Kind())
-		}
 		rowVal := reflect.ValueOf(row)
 		for _, columnNameVal := range rowVal.MapKeys() {
 			columnName := columnNameVal.Interface().(string)

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
+	"log"
 	"reflect"
 	"time"
 )
@@ -164,23 +165,30 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 	return nil
 }
 
-func doSliceProperty(currentSliceElement reflect.Value, val interface{}) error {
+func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 	if reflect.TypeOf(val).Kind() != reflect.Slice {
 		return errors.New("doSliceProperty got an element which is not a slice")
 	}
-	if currentSliceElement.IsZero() {
-		//currentSliceElement.Set(reflect.New(currentSliceElement.Type()).Elem())
-		//		currentSliceElement.Set(reflect.ValueOf(val).Convert(currentSliceElement.Type()))
+	if sliceVal.IsZero() {
+		//sliceVal.Set(reflect.New(sliceVal.Type()).Elem())
+		//		sliceVal.Set(reflect.ValueOf(val).Convert(sliceVal.Type()))
 	}
 	rows := val.([]interface{})
-	rowNumber := 0
-	for _, row := range rows {
-		rowNumber++
+	for rowNumber, row := range rows {
 		var currentElement reflect.Value
-		sliceElm := currentSliceElement
-		for sliceElm.Len() < rowNumber {
-			currentElement = reflect.New(sliceElm.Type().Elem())
-			sliceElm.Set(reflect.Append(sliceElm, currentElement.Elem()))
+		if sliceVal.Len() < rowNumber+1 {
+			sliceElementType := sliceVal.Type().Elem()
+			if sliceElementType.Kind() == reflect.Ptr {
+				sliceElementType = sliceElementType.Elem()
+			}
+			currentElement = reflect.New(sliceElementType)
+			if sliceVal.Type().Elem().Kind() == reflect.Ptr {
+				sliceVal.Set(reflect.Append(sliceVal, currentElement))
+			} else {
+				sliceVal.Set(reflect.Append(sliceVal, currentElement.Elem()))
+			}
+		} else {
+			currentElement = sliceVal.Index(rowNumber)
 		}
 		rowVal := reflect.ValueOf(row)
 		for _, columnNameVal := range rowVal.MapKeys() {
@@ -189,20 +197,33 @@ func doSliceProperty(currentSliceElement reflect.Value, val interface{}) error {
 			if myVal == nil {
 				continue
 			}
-			for currentElement.Kind() == reflect.Ptr {
-				if currentElement.IsZero() {
-					currentElement.Set(reflect.New(currentElement.Type().Elem()))
+			/*
+				for currentElement.Kind() == reflect.Ptr {
+					if currentElement.IsZero() {
+						currentElement.Set(reflect.New(currentElement.Type().Elem()))
+					}
+					currentElement = currentElement.Elem()
+				}*/
+			dataElement := currentElement
+			for dataElement.Type().Kind() == reflect.Ptr {
+				if dataElement.IsZero() {
+					dataElement.Set(reflect.New(dataElement.Type().Elem()))
 				}
-				currentElement = currentElement.Elem()
+				dataElement = dataElement.Elem()
 			}
-			switch currentElement.Kind() {
+			switch dataElement.Kind() {
 			case reflect.Struct:
-				if err := doStructColumnProperty(columnName, currentElement, myVal); err != nil {
+				if err := doStructColumnProperty(columnName, dataElement, myVal); err != nil {
 					return err
 				}
 			default:
-				f := currentElement
-				for f.Type().Kind() == reflect.Ptr && f.Elem().Kind() == reflect.Ptr {
+				fieldStructPropertyName := getStructPropertyName(columnName)
+				fieldVal := dataElement.FieldByName(fieldStructPropertyName)
+				if !fieldVal.IsValid() {
+					return errors.New("internal error: couldn't get field from a struct")
+				}
+				fieldVal.Set(reflect.ValueOf(myVal).Convert(fieldVal.Type()))
+				/*for f.Type().Kind() == reflect.Ptr && f.Elem().Kind() == reflect.Ptr {
 					if f.Elem().IsZero() {
 						f.Elem().Set(reflect.New(f.Type().Elem().Elem()))
 					}
@@ -218,10 +239,11 @@ func doSliceProperty(currentSliceElement reflect.Value, val interface{}) error {
 					if f.IsZero() {
 
 					}
-				}
+				}*/
 			}
 
 		}
+		log.Print(currentElement.Interface())
 	}
 	return nil
 }

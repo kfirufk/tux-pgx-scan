@@ -250,8 +250,7 @@ func TestPointerStringVar(t *testing.T) {
 }
 
 func TestComplexStruct(t *testing.T) {
-	sqlQuery := `select articles from mycocktailworld.user_profiles where profile_dir=$1`
-	//	sqlQuery := `select name,joined_at::timestamptz,bio,articles,cocktails from mycocktailworld.user_profiles where profile_dir=$1`
+	sqlQuery := `select name,joined_at::timestamptz,bio,articles,cocktails from mycocktailworld.user_profiles where profile_dir=$1`
 	var profile Profile
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)

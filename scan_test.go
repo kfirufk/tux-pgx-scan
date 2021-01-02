@@ -34,6 +34,15 @@ const (
 		'{8,2.222,54.32}'::float[] as faf3`
 )
 
+type Role string
+
+type UserInfo struct {
+	Name       string
+	Roles      *[]Role
+	UserId     int
+	ProfileDir string
+}
+
 type fooTest struct {
 	I1   int
 	I2   *int
@@ -353,6 +362,24 @@ func TestComplexStruct(t *testing.T) {
 			}
 			if profile.Cocktails[44].BasedOn[0] != "Vodka" {
 				t.Errorf("profile.Cocktails[44].BasedOn[0] != 'Vodka' => '%v'", profile.Cocktails[44].BasedOn[0])
+			}
+		}
+	}
+}
+
+func TestTypeCast(t *testing.T) {
+	sqlQuery := `select 1 as user_id, 'DjUFK' as profile_dir, 'Kfir Ozer' as name, '{USER}'::text[] as roles`
+	var u UserInfo
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		if err := MyQuery(context.Background(), conn, &u, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if len(*u.Roles) != 1 {
+				t.Errorf("len(*u.Roles) != 1 => '%v'", len(*u.Roles))
+			} else if (*u.Roles)[0] != "USER" {
+				t.Errorf("(*u.Roles)[0] != 'USER' => '%v'", (*u.Roles)[0])
 			}
 		}
 	}

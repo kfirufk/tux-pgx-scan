@@ -83,7 +83,7 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 						case reflect.Ptr:
 							structColumn.Index(idx).Set(reflect.ValueOf(&arr[idx]))
 						case reflect.String:
-							structColumn.Index(idx).Set(reflect.ValueOf(arr[idx]))
+							structColumn.Index(idx).Set(reflect.ValueOf(arr[idx]).Convert(structColumn.Index(idx).Type()))
 						default:
 							return errors.New("unknown type when appending to slice")
 						}

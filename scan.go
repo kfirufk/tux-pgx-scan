@@ -25,25 +25,7 @@ func getStructProperty(columnName string, structElement reflect.Value) (reflect.
 	}
 }
 
-func doStructColumnProperty(originalColumnName string, currentElement reflect.Value, val interface{}) error {
-	structColumn, err := getStructProperty(originalColumnName, currentElement)
-	if err != nil {
-		return err
-	}
-	structColumnType := structColumn.Type()
-	if structColumn.Kind() == reflect.Ptr { // check if pointer
-		if structColumn.IsZero() { // check if pointer is not allocated
-			structColumn.Set(reflect.New(structColumnType.Elem())) // allocate
-		}
-		structColumn = structColumn.Elem()
-		structColumnType = structColumnType.Elem()
-
-	}
-	/**
-	for example to convert from reflect.Int32 to reflect.Int
-	TODO: i need to check her for errors and to provide proper error message with column
-	      name and row number maybe, for example when getting a float to float64 instead of pg.Numeric
-	*/
+func placeData(structColumn reflect.Value, structColumnType reflect.Type, val interface{}) error {
 	switch val.(type) {
 	case string:
 		switch structColumn.Interface().(type) {
@@ -160,6 +142,31 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 		} else {
 			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 		}
+	}
+	return nil
+}
+
+func doStructColumnProperty(originalColumnName string, currentElement reflect.Value, val interface{}) error {
+	structColumn, err := getStructProperty(originalColumnName, currentElement)
+	if err != nil {
+		return err
+	}
+	structColumnType := structColumn.Type()
+	if structColumn.Kind() == reflect.Ptr { // check if pointer
+		if structColumn.IsZero() { // check if pointer is not allocated
+			structColumn.Set(reflect.New(structColumnType.Elem())) // allocate
+		}
+		structColumn = structColumn.Elem()
+		structColumnType = structColumnType.Elem()
+
+	}
+	/**
+	for example to convert from reflect.Int32 to reflect.Int
+	TODO: i need to check her for errors and to provide proper error message with column
+	      name and row number maybe, for example when getting a float to float64 instead of pg.Numeric
+	*/
+	if err := placeData(structColumn, structColumnType, val); err != nil {
+		return err
 	}
 	return nil
 }

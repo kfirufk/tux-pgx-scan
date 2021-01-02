@@ -357,3 +357,18 @@ func TestComplexStruct(t *testing.T) {
 		}
 	}
 }
+
+func TestComplexStruct2(t *testing.T) {
+	sqlQuery := `select added_by, profile_dir, title, "desc", content, created_at, ratings from mycocktailworld.articles_view
+order by created_at desc limit 10;`
+	var articles []*Article
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		if err := MyQuery(context.Background(), conn, &articles, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+
+		}
+	}
+}

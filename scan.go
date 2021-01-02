@@ -256,8 +256,8 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 					default:
 						myVal := reflect.ValueOf(val) // if reflect.Kind = reflect.Interface, to change it
 						if currentElement.Kind() == reflect.Ptr {
-							valIntPtr := reflect.New(myVal.Type())
-							valIntPtr.Elem().Set(myVal)
+							valIntPtr := reflect.New(currentElement.Type().Elem())
+							valIntPtr.Elem().Set(myVal.Convert(currentElement.Type().Elem()))
 							currentElement.Set(valIntPtr)
 						} else {
 							currentElement.Set(myVal.Convert(currentElement.Type()))

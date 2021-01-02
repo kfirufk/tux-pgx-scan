@@ -140,7 +140,9 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 				return err
 			}
 		} else {
-			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+			if err := placeData(structColumn, structColumnType, val); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -263,9 +265,18 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 					default:
 						myVal := reflect.ValueOf(val) // if reflect.Kind = reflect.Interface, to change it
 						if currentElement.Kind() == reflect.Ptr {
-							valIntPtr := reflect.New(currentElement.Type().Elem())
-							valIntPtr.Elem().Set(myVal.Convert(currentElement.Type().Elem()))
-							currentElement.Set(valIntPtr)
+							if currentElement.Type().Elem().Kind() == reflect.Struct {
+								if currentElement.IsZero() {
+									currentElement.Set(reflect.New(currentElement.Type().Elem()))
+								}
+								if err := doStructColumnProperty(string(column.Name), currentElement.Elem(), val); err != nil {
+									return err
+								}
+							} else {
+								valIntPtr := reflect.New(currentElement.Type().Elem())
+								valIntPtr.Elem().Set(myVal.Convert(currentElement.Type().Elem()))
+								currentElement.Set(valIntPtr)
+							}
 						} else {
 							currentElement.Set(myVal.Convert(currentElement.Type()))
 						}

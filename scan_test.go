@@ -359,8 +359,9 @@ func TestComplexStruct(t *testing.T) {
 }
 
 func TestComplexStruct2(t *testing.T) {
-	sqlQuery := `select added_by, profile_dir, title, "desc", content, created_at, ratings from mycocktailworld.articles_view
-order by created_at desc limit 10;`
+	sqlQuery := `select 'Kfir Ozer' as added_by, 'DjUFk' as profile_dir,
+       'test' as title, 'bar' as desc, 'foo' as content,
+       '2020-10-06 12:31:45.158479 +00:00'::timestamptz as created_at, 4 as ratings;`
 	var articles []*Article
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)
@@ -368,6 +369,29 @@ order by created_at desc limit 10;`
 		if err := MyQuery(context.Background(), conn, &articles, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
+			if len(articles) != 1 {
+				t.Errorf("len(articles) != 1 => '%v'", len(articles))
+			}
+			article := articles[0]
+			if *article.AddedBy != "Kfir Ozer" {
+				t.Errorf("*article.AddedBy != 'Kfir Ozer' => %v", *article.AddedBy)
+			}
+			if article.ProfileDir != "DjUFk" {
+				t.Errorf("article.ProfileDir != 'DjUFk' => '%v'", article.ProfileDir)
+			}
+			if article.Title != "test" {
+				t.Errorf("article.Title != 'test' => '%v'", article.Title)
+			}
+			if article.Ratings.Int64 != 4 {
+				t.Errorf("rticle.Ratings.Int64 != 4 => '%v'", article.Ratings.Int64)
+			}
+			if r, err := time.Parse(time.RFC3339, "2020-10-06T12:31:45.158479Z"); err != nil {
+				t.Errorf("cannot create time object: %v", err)
+			} else {
+				if !article.CreatedAt.Equal(r) {
+					t.Errorf("timeestamp %v doesn't match %v", article.CreatedAt, r)
+				}
+			}
 
 		}
 	}

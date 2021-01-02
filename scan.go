@@ -53,6 +53,19 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 		default:
 			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 		}
+	case int32:
+		myVal := val.(int32)
+		switch structColumn.Interface().(type) {
+		case sql.NullInt64:
+			s := sql.NullInt64{
+				Int64: int64(myVal),
+				Valid: true,
+			}
+			structColumn.Set(reflect.ValueOf(s))
+		default:
+			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
+		}
+
 	case pgtype.TextArray:
 		myVal := val.(pgtype.TextArray)
 		var arr []string
@@ -140,9 +153,7 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 				return err
 			}
 		} else {
-			if err := placeData(structColumn, structColumnType, val); err != nil {
-				return err
-			}
+			structColumn.Set(reflect.ValueOf(val).Convert(structColumn.Type()))
 		}
 	}
 	return nil

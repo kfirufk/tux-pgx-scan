@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
-	"log"
 	"math/big"
 	"testing"
 	"time"
@@ -250,15 +249,111 @@ func TestPointerStringVar(t *testing.T) {
 }
 
 func TestComplexStruct(t *testing.T) {
-	//sqlQuery := `select articles from mycocktailworld.user_profiles where profile_dir=$1`
-	sqlQuery := `select name,joined_at::timestamptz,bio,articles,cocktails from mycocktailworld.user_profiles where profile_dir=$1`
+	sqlQuery := `select 'Kfir Ozer' as name,
+       '2020-12-25 20:09:00.454253'::timestamptz joined_at, 'dodo' as bio,
+       ('[{"title" : "test", "desc" : "bar", "content" : "foo", "added_by" : ' ||
+       '"Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : 4, "created_at" : "2020-10-06T12:31:45.158479+00:00"}]')::json as articles,
+       ('[{"name" : "Tiesto", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-25T01:11:57.320916+00:00"}, {"name" : "Tiesto", "based_on" : null, "added_by" : ' ||
+       '"Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-25T01:11:53.783807+00:00"}, ' ||
+       '{"name" : "Tiesto", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null,' ||
+       ' "created_at" : "2020-12-25T01:10:48.109866+00:00"}, {"name" : "Testino", "based_on" : null, "added_by" : ' ||
+       '"Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:33:59.123706+00:00"}, ' ||
+       '{"name" : "Testino", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:33:49.559036+00:00"}, {"name" : "Mojito", "based_on" : ["Vodka"], ' ||
+       '"added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:32:57.435833+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : ["Vodka"], "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:31:54.929065+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : ["Vodka"], "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:30:30.811609+00:00"}, {"name" : "Mojito", "based_on" : ["Vodka"], ' ||
+       '"added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : ' ||
+       '"2020-12-24T23:29:24.245228+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : ' ||
+       '"Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:28:55.360083+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : ["Vodka"], "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:28:24.009733+00:00"}, {"name" : "Mojito", "based_on" : ["Vodka"], "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:28:08.989663+00:00"}, {"name" : "Mojito", "based_on" : ' ||
+       '["Vodka"], "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:26:43.074638+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : ' ||
+       '"2020-12-24T23:24:48.769873+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:24:22.436272+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:18:18.198108+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:18:10.462222+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:17:13.45658+00:00"}, {"name" : "Mojito", "based_on" : null, ' ||
+       '"added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:13:15.265245+00:00"}, {"name" : "Mojito", "based_on" : null, ' ||
+       '"added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:11:43.84442+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:10:56.786207+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:10:49.674992+00:00"}, {"name" : "Mojito", "based_on" : ' ||
+       'null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:10:49.663171+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null,' ||
+       ' "created_at" : "2020-12-24T23:09:37.351679+00:00"}, {"name" : "Mojito", "based_on" : null, ' ||
+       '"added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T23:09:22.127443+00:00"},' ||
+       ' {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T23:08:42.766788+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer",' ||
+       ' "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:22:43.59536+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null,' ||
+       ' "created_at" : "2020-12-24T22:22:43.594712+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:22:21.06514+00:00"}, {"name" : "Mojito", ' ||
+       '"based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:20:30.85907+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:20:08.226166+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:19:36.407507+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:19:07.280318+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:17:49.776704+00:00"}, {"name" : ' ||
+       '"Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:16:50.40818+00:00"}, {"name" : "Mojito", "based_on" : null, ' ||
+       '"added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:14:37.716166+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:13:38.909119+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:10:03.559003+00:00"}, {"name" : "Mojito", ' ||
+       '"based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:09:53.89664+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:09:04.863426+00:00"}, {"name" : "Mojito", ' ||
+       '"based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:06:42.575867+00:00"}, {"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:06:18.087513+00:00"}, {"name" : "Mojito", ' ||
+       '"based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, "created_at" : "2020-12-24T22:04:04.861014+00:00"}, ' ||
+       '{"name" : "Mojito", "based_on" : null, "added_by" : "Kfir Ozer", "profile_dir" : "DjUFK", "ratings" : null, ' ||
+       '"created_at" : "2020-12-24T22:02:23.154287+00:00"}, {"name" : "Mojito", "based_on" : ["Vodka"], "added_by" : "Kfir Ozer", ' ||
+       '"profile_dir" : "DjUFK", "ratings" : 8, "created_at" : "2020-09-29T11:41:06.375723+00:00"}]')::json as cocktails;`
 	var profile Profile
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
-		if err := MyQuery(context.Background(), conn, &profile, sqlQuery, "DjUFK"); err != nil {
+		if err := MyQuery(context.Background(), conn, &profile, sqlQuery); err != nil {
 			t.Error(err)
+		} else {
+			if profile.Name != "Kfir Ozer" {
+				t.Errorf("profile name is not Kfir Ozer => '%v'", profile.Name)
+			}
+			if *profile.Bio != "dodo" {
+				t.Errorf("profile name is not Kfir Ozer => '%v'", profile.Name)
+			}
+			if profile.JoinedAt.IsZero() {
+				t.Error("joined at should not be zero")
+			}
+			if profile.Articles[0].Ratings.Int64 != 4 {
+				t.Errorf("profile.Articles[0].Ratings.Int64 != 4 => '%v'", profile.Articles[0].Ratings.Int64)
+			}
+			if profile.Articles[0].Content != "foo" {
+				t.Errorf("profile.Articles[0].Content != 'foo' => '%v'", profile.Articles[0].Ratings.Int64)
+			}
+			if len(profile.Cocktails) != 45 {
+				t.Errorf("len(profile.Cocktails) != 45 => '%v'", len(profile.Cocktails))
+			}
+			if profile.Cocktails[43].Name != "Mojito" {
+				t.Errorf("profile.Cocktails[43].Name != 'Mojito' => '%v'", profile.Cocktails[43].Name)
+			}
+			if len(profile.Cocktails[44].BasedOn) != 1 {
+				t.Errorf("len(profile.Cocktails[44].BasedOn) != 1 => '%v'", len(profile.Cocktails[44].BasedOn))
+			}
+			if profile.Cocktails[44].BasedOn[0] != "Vodka" {
+				t.Errorf("profile.Cocktails[44].BasedOn[0] != 'Vodka' => '%v'", profile.Cocktails[44].BasedOn[0])
+			}
 		}
-		log.Print("a")
 	}
 }

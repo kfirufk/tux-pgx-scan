@@ -168,33 +168,18 @@ func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 	if reflect.TypeOf(val).Kind() != reflect.Slice {
 		return errors.New("doSliceProperty got an element which is not a slice")
 	}
-	if sliceVal.IsZero() {
-		//sliceVal.Set(reflect.New(sliceVal.Type()).Elem())
-		//		sliceVal.Set(reflect.ValueOf(val).Convert(sliceVal.Type()))
-	}
 	rows := val.([]interface{})
-	for rowNumber, row := range rows {
+	for _, row := range rows {
 		var currentElement reflect.Value
-		if sliceVal.Len() < rowNumber+1 {
-			sliceElementType := sliceVal.Type().Elem()
-			if sliceElementType.Kind() == reflect.Ptr {
-				sliceElementType = sliceElementType.Elem()
-			}
-			currentElement = reflect.New(sliceElementType)
-			if sliceVal.Type().Elem().Kind() == reflect.Ptr {
-				sliceVal.Set(reflect.Append(sliceVal, currentElement))
-			} else {
-				sliceVal.Set(reflect.Append(sliceVal, currentElement.Elem()))
-			}
-		} else {
-			currentElement = sliceVal.Index(rowNumber)
-		}
+		currentElement = reflect.New(sliceVal.Type().Elem())
 		rowVal := reflect.ValueOf(row)
 		dataElement := currentElement
+		pointerDataElement := currentElement
 		for dataElement.Type().Kind() == reflect.Ptr {
 			if dataElement.IsZero() {
 				dataElement.Set(reflect.New(dataElement.Type().Elem()))
 			}
+			pointerDataElement = dataElement
 			dataElement = dataElement.Elem()
 		}
 
@@ -223,6 +208,11 @@ func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 			}
 		default:
 			dataElement.Set(rowVal.Convert(dataElement.Type()))
+		}
+		if sliceVal.Type().Elem().Kind() == reflect.Ptr {
+			sliceVal.Set(reflect.Append(sliceVal, pointerDataElement))
+		} else {
+			sliceVal.Set(reflect.Append(sliceVal, dataElement))
 		}
 	}
 	return nil

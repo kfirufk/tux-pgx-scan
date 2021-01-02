@@ -254,20 +254,13 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 							return err
 						}
 					default:
-						f := currentElement
-						for f.Type().Kind() == reflect.Ptr && f.Elem().Kind() == reflect.Ptr {
-							if f.Elem().IsZero() {
-								f.Elem().Set(reflect.New(f.Type().Elem().Elem()))
-							}
-							f = f.Elem()
-						}
-						if f.Kind() == reflect.Ptr {
-							if f.IsZero() {
-								f.Set(reflect.New(f.Type().Elem()))
-							}
-							f.Elem().Set(reflect.ValueOf(val).Convert(f.Type().Elem()))
+						myVal := reflect.ValueOf(val) // if reflect.Kind = reflect.Interface, to change it
+						if currentElement.Kind() == reflect.Ptr {
+							valIntPtr := reflect.New(myVal.Type())
+							valIntPtr.Elem().Set(myVal)
+							currentElement.Set(valIntPtr)
 						} else {
-							f.Set(reflect.ValueOf(val).Convert(f.Type()))
+							currentElement.Set(myVal.Convert(currentElement.Type()))
 						}
 					}
 

@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
-	"log"
 	"reflect"
 	"time"
 )
@@ -191,59 +190,40 @@ func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 			currentElement = sliceVal.Index(rowNumber)
 		}
 		rowVal := reflect.ValueOf(row)
-		for _, columnNameVal := range rowVal.MapKeys() {
-			columnName := columnNameVal.Interface().(string)
-			myVal := rowVal.MapIndex(columnNameVal).Interface()
-			if myVal == nil {
-				continue
+		dataElement := currentElement
+		for dataElement.Type().Kind() == reflect.Ptr {
+			if dataElement.IsZero() {
+				dataElement.Set(reflect.New(dataElement.Type().Elem()))
 			}
-			/*
-				for currentElement.Kind() == reflect.Ptr {
-					if currentElement.IsZero() {
-						currentElement.Set(reflect.New(currentElement.Type().Elem()))
-					}
-					currentElement = currentElement.Elem()
-				}*/
-			dataElement := currentElement
-			for dataElement.Type().Kind() == reflect.Ptr {
-				if dataElement.IsZero() {
-					dataElement.Set(reflect.New(dataElement.Type().Elem()))
-				}
-				dataElement = dataElement.Elem()
-			}
-			switch dataElement.Kind() {
-			case reflect.Struct:
-				if err := doStructColumnProperty(columnName, dataElement, myVal); err != nil {
-					return err
-				}
-			default:
-				fieldStructPropertyName := getStructPropertyName(columnName)
-				fieldVal := dataElement.FieldByName(fieldStructPropertyName)
-				if !fieldVal.IsValid() {
-					return errors.New("internal error: couldn't get field from a struct")
-				}
-				fieldVal.Set(reflect.ValueOf(myVal).Convert(fieldVal.Type()))
-				/*for f.Type().Kind() == reflect.Ptr && f.Elem().Kind() == reflect.Ptr {
-					if f.Elem().IsZero() {
-						f.Elem().Set(reflect.New(f.Type().Elem().Elem()))
-					}
-					f = f.Elem()
-				}
-				if f.Kind() == reflect.Ptr {
-					if f.IsZero() {
-						f.Set(reflect.New(f.Type().Elem()))
-					}
-					f.Elem().Set(reflect.ValueOf(myVal).Convert(f.Type().Elem()))
-				} else {
-					f.Set(reflect.ValueOf(myVal))
-					if f.IsZero() {
-
-					}
-				}*/
-			}
-
+			dataElement = dataElement.Elem()
 		}
-		log.Print(currentElement.Interface())
+
+		switch rowVal.Kind() {
+		case reflect.Map:
+			for _, columnNameVal := range rowVal.MapKeys() {
+				columnName := columnNameVal.Interface().(string)
+				myVal := rowVal.MapIndex(columnNameVal).Interface()
+				if myVal == nil {
+					continue
+				}
+				switch dataElement.Kind() {
+				case reflect.Struct:
+					if err := doStructColumnProperty(columnName, dataElement, myVal); err != nil {
+						return err
+					}
+				default:
+					fieldStructPropertyName := getStructPropertyName(columnName)
+					fieldVal := dataElement.FieldByName(fieldStructPropertyName)
+					if !fieldVal.IsValid() {
+						return errors.New("internal error: couldn't get field from a struct")
+					}
+					fieldVal.Set(reflect.ValueOf(myVal).Convert(fieldVal.Type()))
+				}
+
+			}
+		default:
+			dataElement.Set(rowVal.Convert(dataElement.Type()))
+		}
 	}
 	return nil
 }

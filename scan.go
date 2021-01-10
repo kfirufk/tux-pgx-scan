@@ -238,10 +238,10 @@ func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 	return nil
 }
 
-func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql string, args ...interface{}) error {
+func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql string, args ...interface{}) (bool, error) {
 	barAddrVal := reflect.ValueOf(dstAddr)
 	if rows, err := conn.Query(ctx, sql, args...); err != nil {
-		return errors.Errorf("could not select from db: %v", err)
+		return true, errors.Errorf("could not select from db: %v", err)
 	} else {
 		defer rows.Close()
 		currentElement := barAddrVal.Elem()
@@ -256,11 +256,11 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 				}
 				currentElement = barAddrVal.Elem().Index(rowNumber - 1)
 				if !currentElement.IsValid() {
-					return errors.New("slice item source is not valid")
+					return true, errors.New("slice item source is not valid")
 				}
 			}
 			if values, err := rows.Values(); err != nil {
-				return errors.Errorf("could not fetch values from db: %v", err)
+				return true, errors.Errorf("could not fetch values from db: %v", err)
 			} else {
 				fields := rows.FieldDescriptions()
 				for idx, column := range fields {
@@ -271,7 +271,7 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 					switch currentElement.Kind() {
 					case reflect.Struct:
 						if err := doStructColumnProperty(string(column.Name), currentElement, val); err != nil {
-							return err
+							return true, err
 						}
 					default:
 						myVal := reflect.ValueOf(val) // if reflect.Kind = reflect.Interface, to change it
@@ -281,7 +281,7 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 									currentElement.Set(reflect.New(currentElement.Type().Elem()))
 								}
 								if err := doStructColumnProperty(string(column.Name), currentElement.Elem(), val); err != nil {
-									return err
+									return true, err
 								}
 							} else {
 								valIntPtr := reflect.New(currentElement.Type().Elem())
@@ -296,6 +296,6 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 				}
 			}
 		}
-		return nil
+		return rowNumber > 0, nil
 	}
 }

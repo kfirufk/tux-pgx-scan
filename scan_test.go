@@ -8,18 +8,18 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
+	"io"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 )
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "ufk"
-	password = "your-password"
-	dbname   = "mycw"
-)
+var host string
+var port string
+var user string
+var pass string
+var db string
 
 const (
 	queryFooTestRowA = `select 1 as i1, 2 as i2, 'a' as s1, 'b' as s2, 5.2 as f1, 5.4 as f2, 6.1 as ff1, 6.2 as ff2,
@@ -93,10 +93,35 @@ type CocktailInfo struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
+func Initialize() bool {
+	host = os.Getenv("PGSQLDB_HOST")
+	port = os.Getenv("PGSQLDB_PORT")
+	db = os.Getenv("PGSQLDB_DB")
+	user = os.Getenv("PGSQLDB_USER")
+	pass = os.Getenv("PGSQLDB_PASS")
+	if host == "" || port == "" || db == "" || user == "" {
+		io.WriteString(os.Stderr,
+			"these tests are connecting to the database and querying static data, do not load any tables or anything\n"+
+				"this tests needs the following ENV: PGSQLDB_HOST,PGSQLDB_PORT,PGSQLDB_DB,PGSQLDB_USER,PGSQLDB_PASS")
+		return false
+	} else {
+
+		return true
+	}
+}
+
+func TestMain(m *testing.M) {
+	if isWorks := Initialize(); isWorks {
+		os.Exit(m.Run())
+	}
+	os.Exit(0)
+
+}
+
 func GetDbConnection() (*pgxpool.Pool, error) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
+		"dbname=%s sslmode=disable password=%s",
+		host, port, user, db, pass)
 	return pgxpool.Connect(context.Background(), psqlInfo)
 }
 
@@ -160,7 +185,7 @@ func TestBasicTypesInStruct(t *testing.T) {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var bar fooTest
-		if err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			fooFoo := getTestRow1()
@@ -178,7 +203,7 @@ func TestBasicTypesInStuctInSlice(t *testing.T) {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var bar []fooTest
-		if err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			fooFoo := getTestRow1()
@@ -195,7 +220,7 @@ func TestIntVar(t *testing.T) {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var foo int
-		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if foo != 123 {
@@ -212,7 +237,7 @@ func TestStringVar(t *testing.T) {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var foo string
-		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if foo != "moshe" {
@@ -229,7 +254,7 @@ func TestPointerIntVar(t *testing.T) {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var foo *int
-		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if *foo != 123 {
@@ -246,7 +271,7 @@ func TestPointerStringVar(t *testing.T) {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
 		var foo *string
-		if err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &foo, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if *foo != "foofoo" {
@@ -333,7 +358,7 @@ func TestComplexStruct(t *testing.T) {
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
-		if err := MyQuery(context.Background(), conn, &profile, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &profile, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if profile.Name != "Kfir Ozer" {
@@ -373,7 +398,7 @@ func TestTypeCast(t *testing.T) {
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
-		if err := MyQuery(context.Background(), conn, &u, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &u, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if len(*u.Roles) != 1 {
@@ -393,7 +418,7 @@ func TestComplexStruct2(t *testing.T) {
 	if conn, err := GetDbConnection(); err != nil {
 		t.Errorf("could not connect to database: %v", err)
 	} else {
-		if err := MyQuery(context.Background(), conn, &articles, sqlQuery); err != nil {
+		if _, err := MyQuery(context.Background(), conn, &articles, sqlQuery); err != nil {
 			t.Error(err)
 		} else {
 			if len(articles) != 1 {

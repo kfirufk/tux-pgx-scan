@@ -296,6 +296,6 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 				}
 			}
 		}
-		return rowNumber > 0, nil
+		return rowNumber == 0, nil
 	}
 }

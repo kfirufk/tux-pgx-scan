@@ -3,12 +3,14 @@ package tux_pgx_scan
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
+	"unsafe"
 )
 
 func getStructPropertyName(columnName string) string {
@@ -238,6 +240,12 @@ func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 	return nil
 }
 
+func BytesToString(b []byte) string {
+	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	sh := reflect.StringHeader{bh.Data, bh.Len}
+	return *(*string)(unsafe.Pointer(&sh))
+}
+
 func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql string, args ...interface{}) (bool, error) {
 	barAddrVal := reflect.ValueOf(dstAddr)
 	if rows, err := conn.Query(ctx, sql, args...); err != nil {
@@ -289,7 +297,13 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 								currentElement.Set(valIntPtr)
 							}
 						} else {
-							currentElement.Set(myVal.Convert(currentElement.Type()))
+							if currentElement.Kind() == reflect.String && myVal.Kind() == reflect.Array { //UUID
+								b := myVal.Interface()
+								a := fmt.Sprintf("%x", b)
+								currentElement.Set(reflect.ValueOf(a))
+							} else {
+								currentElement.Set(myVal.Convert(currentElement.Type()))
+							}
 						}
 					}
 

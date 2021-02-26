@@ -197,6 +197,23 @@ func TestBasicTypesInStruct(t *testing.T) {
 	}
 }
 
+func TestUUIDPgSql13(t *testing.T) {
+	shortUuid := "4013f6517888474c90e2f68b74e12f99"
+	sqlQuery := `select '4013f651-7888-474c-90e2-f68b74e12f99'::uuid`
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var bar string
+		if _, err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if bar != shortUuid {
+				t.Errorf("uuid test failed, return uuid %v is different then expected %v", bar, shortUuid)
+			}
+		}
+	}
+}
+
 func TestBasicTypesInStuctInSlice(t *testing.T) {
 	sqlQuery := queryFooTestRowA + " union " + queryFooTestRowB
 	if conn, err := GetDbConnection(); err != nil {

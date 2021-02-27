@@ -197,6 +197,32 @@ func TestBasicTypesInStruct(t *testing.T) {
 	}
 }
 
+func TestScan(t *testing.T) {
+	sqlQuery := `select 5, 'moshe';`
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		if row, isEmpty, err := MyQueryScan(context.Background(), conn, sqlQuery); err != nil {
+			t.Error(err)
+		} else if isEmpty {
+			t.Error("row resulted empty!")
+		} else {
+			var num int
+			var name string
+			if err := row.Scan(&num, &name); err != nil {
+				t.Error(err)
+			} else {
+				if num != 5 {
+					t.Errorf("num != original value 5 != '%v'", num)
+				}
+				if name != "moshe" {
+					t.Errorf("name != original value moshe != '%v'", name)
+				}
+			}
+		}
+	}
+}
+
 func TestUUIDPgSql13(t *testing.T) {
 	shortUuid := "4013f6517888474c90e2f68b74e12f99"
 	sqlQuery := `select '4013f651-7888-474c-90e2-f68b74e12f99'::uuid`

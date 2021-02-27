@@ -1,0 +1,3 @@
+# TODO list
+
+1. change basic scan implement to use the reflection method on each column, currently it just uses regular scan operations.

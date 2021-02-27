@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"reflect"
@@ -244,6 +245,34 @@ func BytesToString(b []byte) string {
 	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	sh := reflect.StringHeader{bh.Data, bh.Len}
 	return *(*string)(unsafe.Pointer(&sh))
+}
+
+type MyQueryScanRet struct {
+	Rows pgx.Rows
+}
+
+func (m *MyQueryScanRet) Scan(dest ...interface{}) error {
+	return m.Rows.Scan(dest...)
+}
+
+func MyQueryScan(ctx context.Context, conn *pgxpool.Pool, sql string, args ...interface{}) (*MyQueryScanRet, bool, error) {
+	if rows, err := conn.Query(ctx, sql, args...); err != nil {
+		return nil, true, errors.Errorf("could not select from db: %v", err)
+	} else {
+		defer rows.Close()
+		rowNumber := 0
+		for rows.Next() {
+			rowNumber++
+			if rowNumber > 1 {
+				return nil, true, errors.New("current version does not support result with more then one line")
+			}
+			ret := MyQueryScanRet{
+				Rows: rows,
+			}
+			return &ret, false, nil
+		}
+		return nil, true, nil
+	}
 }
 
 func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql string, args ...interface{}) (bool, error) {

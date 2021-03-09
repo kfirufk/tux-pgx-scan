@@ -93,6 +93,10 @@ type CocktailInfo struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
+type ContainsID struct {
+	ID int `json:"id"`
+}
+
 func Initialize() bool {
 	host = os.Getenv("PGSQLDB_HOST")
 	port = os.Getenv("PGSQLDB_PORT")
@@ -102,7 +106,7 @@ func Initialize() bool {
 	if host == "" || port == "" || db == "" || user == "" {
 		io.WriteString(os.Stderr,
 			"these tests are connecting to the database and querying static data, do not load any tables or anything\n"+
-				"this tests needs the following ENV: PGSQLDB_HOST,PGSQLDB_PORT,PGSQLDB_DB,PGSQLDB_USER,PGSQLDB_PASS")
+				"this tests needs the following ENV: PGSQLDB_HOST,PGSQLDB_PORT,PGSQLDB_DB,PGSQLDB_USER,PGSQLDB_PASS\n")
 		return false
 	} else {
 
@@ -191,6 +195,25 @@ func TestBasicTypesInStruct(t *testing.T) {
 			fooFoo := getTestRow1()
 			if !cmp.Equal(fooFoo, bar, cmp.AllowUnexported(big.Int{})) {
 				t.Errorf("failed test: %v", cmp.Diff(fooFoo, bar, cmp.AllowUnexported(big.Int{})))
+			}
+
+		}
+	}
+}
+
+func TestGetIdColumn(t *testing.T) {
+	sqlQuery := `select 123 as id`
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var bar ContainsID
+		if isEmpty, err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
+			t.Error(err)
+		} else if isEmpty {
+			t.Error("failed test: query result returned empty!")
+		} else {
+			if bar.ID != 123 {
+				t.Errorf("failed test.  ID 123 != %v", bar.ID)
 			}
 
 		}

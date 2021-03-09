@@ -1,3 +1,5 @@
 # TODO list
 
-1. change basic scan implement to use the reflection method on each column, currently it just uses regular scan operations.
+* change basic scan implement to use the reflection method on each column, currently it just uses regular scan operations.
+* need to implement better column name to variable name conversion
+* allow supporting tag names like `db` or maybe `json` if db doesn't exist

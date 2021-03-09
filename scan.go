@@ -10,12 +10,17 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"reflect"
+	"strings"
 	"time"
 	"unsafe"
 )
 
 func getStructPropertyName(columnName string) string {
-	return strcase.ToCamel(columnName)
+	if len(columnName) == 2 {
+		return strings.ToUpper(columnName)
+	} else {
+		return strcase.ToCamel(columnName)
+	}
 }
 
 func getStructProperty(columnName string, structElement reflect.Value) (reflect.Value, error) {

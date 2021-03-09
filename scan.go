@@ -19,15 +19,19 @@ func getStructPropertyName(columnName string) string {
 	if len(columnName) == 2 {
 		return strings.ToUpper(columnName)
 	} else {
+		if strings.ToLower(columnName[len(columnName)-2:]) == "id" {
+			return columnName[:len(columnName)-2] + strings.ToUpper(columnName[len(columnName)-2:])
+		}
 		return strcase.ToCamel(columnName)
 	}
 }
 
-func getStructProperty(columnName string, structElement reflect.Value) (reflect.Value, error) {
-	columnNameParsed := getStructPropertyName(columnName)
-	structColumn := structElement.FieldByName(columnNameParsed)
+// https://stackoverflow.com/questions/54119616/ignore-case-in-golang-reflection-fieldbyname
+func getStructProperty(name string, v reflect.Value) (reflect.Value, error) {
+	name = strings.ToLower(strings.ReplaceAll(name, "_", ""))
+	structColumn := v.FieldByNameFunc(func(n string) bool { return strings.ToLower(n) == name })
 	if !structColumn.IsValid() {
-		return reflect.Value{}, errors.Errorf("row returned column name %v which was not found in the destination address", columnName)
+		return reflect.Value{}, errors.Errorf("rowI returned column name %v which was not found in the destination address", name)
 	} else {
 		return structColumn, nil
 	}

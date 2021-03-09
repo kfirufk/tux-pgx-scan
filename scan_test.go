@@ -97,36 +97,43 @@ type ContainsID struct {
 	ID int `json:"id"`
 }
 
-func Initialize() bool {
+func Initialize() {
 	host = os.Getenv("PGSQLDB_HOST")
-	port = os.Getenv("PGSQLDB_PORT")
-	db = os.Getenv("PGSQLDB_DB")
-	user = os.Getenv("PGSQLDB_USER")
-	pass = os.Getenv("PGSQLDB_PASS")
-	if host == "" || port == "" || db == "" || user == "" {
-		io.WriteString(os.Stderr,
-			"these tests are connecting to the database and querying static data, do not load any tables or anything\n"+
-				"this tests needs the following ENV: PGSQLDB_HOST,PGSQLDB_PORT,PGSQLDB_DB,PGSQLDB_USER,PGSQLDB_PASS\n")
-		return false
-	} else {
-
-		return true
+	if host == "" {
+		host = "localhost"
 	}
+	port = os.Getenv("PGSQLDB_PORT")
+	if port == "" {
+		port = "5432"
+	}
+	db = os.Getenv("PGSQLDB_DB")
+	if db == "" {
+		db = "postgres"
+	}
+	user = os.Getenv("PGSQLDB_USER")
+	if user == "" {
+		user = "postgres"
+	}
+	pass = os.Getenv("PGSQLDB_PASS")
+
 }
 
 func TestMain(m *testing.M) {
-	if isWorks := Initialize(); isWorks {
-		os.Exit(m.Run())
-	}
-	os.Exit(0)
-
+	Initialize()
+	os.Exit(m.Run())
 }
 
 func GetDbConnection() (*pgxpool.Pool, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"dbname=%s sslmode=disable password=%s",
 		host, port, user, db, pass)
-	return pgxpool.Connect(context.Background(), psqlInfo)
+	conn, err := pgxpool.Connect(context.Background(), psqlInfo)
+	if err != nil {
+		io.WriteString(os.Stderr,
+			"these tests are connecting to the database and querying static data, do not load any tables or anything\n"+
+				"this tests needs the following ENV: PGSQLDB_HOST (default localhost),PGSQLDB_PORT (default 5432),PGSQLDB_DB (default postgres),PGSQLDB_USER (default postgres,PGSQLDB_PASS\n")
+	}
+	return conn, err
 }
 
 func getTestRow1() fooTest {

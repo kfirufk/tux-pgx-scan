@@ -93,6 +93,22 @@ type CocktailInfo struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
+type User struct {
+	ProfileDir    string `json:"profile_dir"`
+	IsImgVerified bool   `json:"is_img_verified"`
+	Name          string `json:"name"`
+}
+
+type CocktailInfo2 struct {
+	Name          string         `json:"name"`
+	BasedOn       pq.StringArray `json:"based_on"`
+	AddedBy       *User          `json:"added_by"`
+	ProfileDir    *string        `json:"profile_dir"`
+	Ratings       *sql.NullInt64 `json:"ratings"`
+	CreatedAt     time.Time      `json:"created_at"`
+	IsImgVerified bool           `json:"is_img_verified"`
+}
+
 type ContainsID struct {
 	ID int `json:"id"`
 }
@@ -462,6 +478,33 @@ func TestComplexStruct(t *testing.T) {
 				t.Errorf("profile.Cocktails[44].BasedOn[0] != 'Vodka' => '%v'", profile.Cocktails[44].BasedOn[0])
 			}
 		}
+	}
+}
+
+func TestJsonType(t *testing.T) {
+	sqlQuery := `select 'foo' as name, '{Vodka}'::text[] as based_on,
+       json_build_object('name','dj. ufk','is_img_verified',false,'profile_dir','moshe') as added_by,
+       'moshe' as profile_dir, now() as created_at, 5 as ratings, false as is_img_verified
+union all
+select 'foo2' as name, '{Monin}'::text[] as based_on,
+       json_build_object('name','bar','is_img_verified',true,'profile_dir','haim') as added_by,
+       'moshe3' as profile_dir, now() as created_at, 5 as ratings, true as is_img_verified`
+	var ret []*CocktailInfo2
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else if _, err := MyQuery(context.Background(), conn, &ret, sqlQuery); err != nil {
+		t.Error(err)
+	} else {
+		if len(ret) != 2 {
+			t.Errorf("len(ret) != 2 => '%v'", len(ret))
+		}
+		if ret[0].AddedBy.Name != "dj. ufk" {
+			t.Errorf("ret[0].AddedBy.Name != \"dj. ufk\" => %v", ret[0].AddedBy.Name)
+		}
+		if ret[1].AddedBy.Name != "bar" {
+			t.Errorf("ret[1].AddedBy.Name != \"bar\" => %v", ret[1].AddedBy.Name)
+		}
+
 	}
 }
 

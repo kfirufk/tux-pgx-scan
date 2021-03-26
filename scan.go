@@ -77,7 +77,10 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 		default:
 			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 		}
-
+	case map[string]interface{}:
+		if err := doSingleRowProperty(false, structColumn, val); err != nil {
+			return err
+		}
 	case pgtype.TextArray:
 		myVal := val.(pgtype.TextArray)
 		var arr []string
@@ -105,7 +108,8 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 				structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 			}
 		}
-
+	case bool:
+		structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 	case pgtype.Int4Array:
 		myVal := val.(pgtype.Int4Array)
 		var arr []int
@@ -196,55 +200,75 @@ func doStructColumnProperty(originalColumnName string, currentElement reflect.Va
 	return nil
 }
 
+func doSingleRowProperty(isSlice bool, element reflect.Value, val interface{}) error {
+	var currentElement reflect.Value
+	if isSlice {
+		currentElement = reflect.New(element.Type().Elem())
+	} else {
+		currentElement = element
+	}
+	rowVal := reflect.ValueOf(val)
+	dataElement := currentElement
+	pointerDataElement := currentElement
+	for dataElement.Type().Kind() == reflect.Ptr {
+		if dataElement.IsZero() {
+			dataElement.Set(reflect.New(dataElement.Type().Elem()))
+		}
+		pointerDataElement = dataElement
+		dataElement = dataElement.Elem()
+	}
+
+	switch rowVal.Kind() {
+	case reflect.Map:
+		for _, columnNameVal := range rowVal.MapKeys() {
+			columnName := columnNameVal.Interface().(string)
+			myVal := rowVal.MapIndex(columnNameVal).Interface()
+			if myVal == nil {
+				continue
+			}
+			switch dataElement.Kind() {
+			case reflect.Struct:
+				if err := doStructColumnProperty(columnName, dataElement, myVal); err != nil {
+					return err
+				}
+			default:
+				fieldStructPropertyName := getStructPropertyName(columnName)
+				fieldVal := dataElement.FieldByName(fieldStructPropertyName)
+				if !fieldVal.IsValid() {
+					return errors.New("internal error: couldn't get field from a struct")
+				}
+				fieldVal.Set(reflect.ValueOf(myVal).Convert(fieldVal.Type()))
+			}
+
+		}
+	default:
+		dataElement.Set(rowVal.Convert(dataElement.Type()))
+	}
+	if isSlice {
+		if element.Type().Elem().Kind() == reflect.Ptr {
+			element.Set(reflect.Append(element, pointerDataElement))
+		} else {
+			element.Set(reflect.Append(element, dataElement))
+		}
+	} else {
+		if element.Type().Kind() == reflect.Ptr {
+			element.Set(pointerDataElement)
+		} else {
+			element.Set(dataElement)
+		}
+
+	}
+	return nil
+}
+
 func doSliceProperty(sliceVal reflect.Value, val interface{}) error {
 	if reflect.TypeOf(val).Kind() != reflect.Slice {
 		return errors.New("doSliceProperty got an element which is not a slice")
 	}
 	rows := val.([]interface{})
 	for _, row := range rows {
-		var currentElement reflect.Value
-		currentElement = reflect.New(sliceVal.Type().Elem())
-		rowVal := reflect.ValueOf(row)
-		dataElement := currentElement
-		pointerDataElement := currentElement
-		for dataElement.Type().Kind() == reflect.Ptr {
-			if dataElement.IsZero() {
-				dataElement.Set(reflect.New(dataElement.Type().Elem()))
-			}
-			pointerDataElement = dataElement
-			dataElement = dataElement.Elem()
-		}
-
-		switch rowVal.Kind() {
-		case reflect.Map:
-			for _, columnNameVal := range rowVal.MapKeys() {
-				columnName := columnNameVal.Interface().(string)
-				myVal := rowVal.MapIndex(columnNameVal).Interface()
-				if myVal == nil {
-					continue
-				}
-				switch dataElement.Kind() {
-				case reflect.Struct:
-					if err := doStructColumnProperty(columnName, dataElement, myVal); err != nil {
-						return err
-					}
-				default:
-					fieldStructPropertyName := getStructPropertyName(columnName)
-					fieldVal := dataElement.FieldByName(fieldStructPropertyName)
-					if !fieldVal.IsValid() {
-						return errors.New("internal error: couldn't get field from a struct")
-					}
-					fieldVal.Set(reflect.ValueOf(myVal).Convert(fieldVal.Type()))
-				}
-
-			}
-		default:
-			dataElement.Set(rowVal.Convert(dataElement.Type()))
-		}
-		if sliceVal.Type().Elem().Kind() == reflect.Ptr {
-			sliceVal.Set(reflect.Append(sliceVal, pointerDataElement))
-		} else {
-			sliceVal.Set(reflect.Append(sliceVal, dataElement))
+		if err := doSingleRowProperty(true, sliceVal, row); err != nil {
+			return err
 		}
 	}
 	return nil

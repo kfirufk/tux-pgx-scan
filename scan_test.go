@@ -84,6 +84,16 @@ type Article struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
+type PurchaseProductSale struct {
+	SaleText             string   `json:"saleText"`
+	SaleProductPrice     float64  `json:"saleProductPrice"`
+	BuyProductsLabels    []string `json:"BuyProductsLabels"`
+	BuyProductsTitles    []string `json:"BuyProductsTitles"`
+	SaleProductLabel     string   `json:"SaleProductLabel"`
+	SaleProductTitle     string   `json:"SaleProductTitle"`
+	ShowInCategoryLabels []string `json:"ShowInCategoryLabels"`
+}
+
 type CocktailInfo struct {
 	Name       string         `json:"name"`
 	BasedOn    pq.StringArray `json:"based_on"`
@@ -369,6 +379,46 @@ func TestPointerStringVar(t *testing.T) {
 		}
 
 	}
+}
+
+func TestNumericToFloat(t *testing.T) {
+	sqlQuery := `select 10.5::decimal(10,2) as mynum`
+	var theNum float64
+	conn, err := GetDbConnection()
+	if err != nil {
+		t.Errorf("could not connect to database: %v", err)
+		return
+	}
+	if _, err := MyQuery(context.Background(), conn, &theNum, sqlQuery); err != nil {
+		t.Error(err)
+	} else {
+		if theNum != 10.5 {
+			t.Error("returned number is not equal to 10.5")
+		}
+	}
+}
+
+func TestSomethingElse(t *testing.T) {
+	sqlQuery := `
+select 'hello' as sale_text, 50 as sale_product_price, 
+'{wd_in_window,wd_stick_on}'::text[] buy_products_labels, '{"משה","חיים"}'::text[] as buy_products_titles, 
+'front_car_wipers' as sale_product_label, 'car wipers' as sale_product_title, '{wd}'::text[] as show_in_category_labels`
+	var sales []*PurchaseProductSale
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		if _, err := MyQuery(context.Background(), conn, &sales, sqlQuery); err != nil {
+			t.Error(err)
+		} else {
+			if len(sales) != 1 {
+				t.Errorf("sales length differs then one -> %v", len(sales))
+			}
+			if sales[0].SaleProductPrice != 50 {
+				t.Errorf("sale price is not 50 => '%v'", sales[0].SaleProductPrice)
+			}
+		}
+	}
+
 }
 
 func TestComplexStruct(t *testing.T) {

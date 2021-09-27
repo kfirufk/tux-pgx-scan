@@ -318,6 +318,7 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 		rowNumber := 0
 		for rows.Next() {
 			rowNumber++
+			//		log.Printf("working on row %v",rowNumber)
 			if barAddrVal.Elem().Kind() == reflect.Slice {
 				sliceElm := barAddrVal.Elem()
 				for sliceElm.Len() < rowNumber {
@@ -335,6 +336,7 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 				fields := rows.FieldDescriptions()
 				for idx, column := range fields {
 					val := values[idx]
+					//					log.Printf("working on column %s value %v",column.Name,val)
 					if val == nil {
 						continue
 					}
@@ -364,7 +366,17 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 								a := fmt.Sprintf("%x", b)
 								currentElement.Set(reflect.ValueOf(a))
 							} else {
-								currentElement.Set(myVal.Convert(currentElement.Type()))
+								if myVal.Type().String() == "pgtype.Numeric" {
+									var num = myVal.Interface().(pgtype.Numeric)
+									var res float64
+									if err := num.AssignTo(&res); err != nil {
+										return false, err
+									}
+									resF := reflect.ValueOf(res)
+									currentElement.Set(resF.Convert(currentElement.Type()))
+								} else {
+									currentElement.Set(myVal.Convert(currentElement.Type()))
+								}
 							}
 						}
 					}

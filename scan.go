@@ -357,7 +357,17 @@ func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql s
 								}
 							} else {
 								valIntPtr := reflect.New(currentElement.Type().Elem())
-								valIntPtr.Elem().Set(myVal.Convert(currentElement.Type().Elem()))
+								if myVal.Type().String() == "pgtype.Numeric" {
+									var num = myVal.Interface().(pgtype.Numeric)
+									var res float64
+									if err := num.AssignTo(&res); err != nil {
+										return false, err
+									}
+									resF := reflect.ValueOf(res)
+									valIntPtr.Elem().Set(resF.Convert(valIntPtr.Elem().Type()))
+								} else {
+									valIntPtr.Elem().Set(myVal.Convert(currentElement.Type().Elem()))
+								}
 								currentElement.Set(valIntPtr)
 							}
 						} else {

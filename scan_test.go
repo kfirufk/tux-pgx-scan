@@ -381,6 +381,23 @@ func TestPointerStringVar(t *testing.T) {
 	}
 }
 
+func TestNumericToFloatPointer(t *testing.T) {
+	sqlQuery := `select 10.5::decimal(10,2) as mynum`
+	var theNum *float32
+	conn, err := GetDbConnection()
+	if err != nil {
+		t.Errorf("could not connect to database: %v", err)
+		return
+	}
+	if _, err := MyQuery(context.Background(), conn, &theNum, sqlQuery); err != nil {
+		t.Error(err)
+	} else {
+		if *theNum != 10.5 {
+			t.Error("returned number is not equal to 10.5")
+		}
+	}
+}
+
 func TestNumericToFloat(t *testing.T) {
 	sqlQuery := `select 10.5::decimal(10,2) as mynum`
 	var theNum float64

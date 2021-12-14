@@ -38,7 +38,7 @@ so this example is a test to insert query result to a string
 	}
 
 # TODO
-pgx is a must, so I'm not gonna change test! 
+pgx is a must, so I'm not gonna change that! 
 
 * I tested only with postgres I would like to add more test cases with other databases to make sure things are working right.
 * I would also want to create profiling tests to see how slow/fast it is compared to other methods. 

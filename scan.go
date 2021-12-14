@@ -3,7 +3,9 @@ package tux_pgx_scan
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/iancoleman/strcase"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
@@ -43,13 +45,20 @@ func placeData(structColumn reflect.Value, structColumnType reflect.Type, val in
 		switch structColumn.Interface().(type) {
 		case time.Time:
 			myVal := val.(string)
-			if theTime, err := time.Parse(time.RFC3339, myVal); err != nil {
+			if theTime, err := dateparse.ParseAny(myVal); err != nil {
 				return err
 			} else {
 				structColumn.Set(reflect.ValueOf(theTime))
 
 			}
 		default:
+			if structColumnType.Kind() == reflect.Slice ||
+				structColumnType.Kind() == reflect.Struct {
+				var result interface{}
+				if err := json.Unmarshal([]byte(val.(string)), &result); err == nil {
+					return placeData(structColumn, structColumnType, result)
+				}
+			}
 			structColumn.Set(reflect.ValueOf(val).Convert(structColumnType))
 		}
 

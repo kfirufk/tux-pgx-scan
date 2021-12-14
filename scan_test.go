@@ -32,6 +32,9 @@ const (
 		'{2,moshe,haim}'::text[] as sa2, '{3,moshe2,haim2}'::text[] as sa3, '{4,3.3,2.3}'::float[] as fa1,
 		'{5,4.5,6.43}'::float[] as fa2,'{6,1.123,2.342}'::float[] as faf1,'{7,63.233,6.245}'::float[] as faf2,
 		'{8,2.222,54.32}'::float[] as faf3`
+	queryCocktailStruct = `select 'dj. ufk' as nickname, 'Kfir Ozer' as name, 'ufkfir@icloud.com' as email, null as gender, '1980-11-01' as birthday, '2021-04-03 04:54:30.443801 +00:00' as joined_at, 
+null as bio, null as articles, '[{"name" : "Martini", "based_on" : ["Dry Gin","Dry Vermouth"], "added_by" : {"name" : "dj. ufk", "is_img_verified" : null, "profile_dir" : "dj.ufk"},  "is_published" : false, "ratings" : null, "created_at" : "2021-12-13T09:48:52.840735+00:00"}]' as cocktails
+`
 )
 
 type Role string
@@ -71,6 +74,40 @@ type Profile struct {
 	Cocktails []*CocktailInfo `json:"cocktails"`
 	JoinedAt  time.Time       `json:"joined_at"`
 	Bio       *string         `json:"bio"`
+}
+
+type Profile2 struct {
+	Name      string           `json:"name"`
+	Email     *string          `json:"email"`
+	Nickname  *string          `json:"nickname"`
+	Birthday  *time.Time       `json:"birthday"`
+	Gender    *string          `json:"gender"`
+	Articles  []*Article2      `json:"articles"`
+	Cocktails []*CocktailInfo3 `json:"cocktails"`
+	JoinedAt  time.Time        `json:"joined_at"`
+	Bio       *string          `json:"bio"`
+}
+
+type CocktailInfo3 struct {
+	Name          string    `json:"name"`
+	BasedOn       []string  `json:"based_on"`
+	AddedBy       *User     `json:"added_by"`
+	IsPublished   *bool     `json:"is_published"`
+	IsImgVerified *bool     `json:"is_img_verified"`
+	Ratings       *int      `json:"ratings"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+type Article2 struct {
+	AddedBy       *User     `json:"added_by"`
+	IsPublished   *bool     `json:"is_published"`
+	IsImgVerified *bool     `json:"is_img_verified"`
+	Title         string    `json:"title"`
+	Ratings       *int      `json:"ratings"`
+	Desc          string    `json:"desc"`
+	Source        *string   `json:"source"`
+	Content       string    `json:"content"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type Article struct {
@@ -214,6 +251,18 @@ func getTestRow1() fooTest {
 		Ff2:  &f62,
 	}
 	return fooFoo
+}
+
+func TestCheckingNoErrorConvertingStringToJsonObj(t *testing.T) {
+	sqlQuery := queryCocktailStruct
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		var bar Profile2
+		if _, err := MyQuery(context.Background(), conn, &bar, sqlQuery); err != nil {
+			t.Error(err)
+		}
+	}
 }
 
 func TestBasicTypesInStruct(t *testing.T) {

@@ -9,13 +9,16 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"time"
 	"unsafe"
 )
+
+type dbconn interface {
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
+}
 
 func getStructPropertyName(columnName string) string {
 	if len(columnName) == 2 {
@@ -297,7 +300,7 @@ func (m *MyQueryScanRet) Scan(dest ...interface{}) error {
 	return m.Rows.Scan(dest...)
 }
 
-func MyQueryScan(ctx context.Context, conn *pgxpool.Pool, sql string, args ...interface{}) (*MyQueryScanRet, bool, error) {
+func MyQueryScan(ctx context.Context, conn dbconn, sql string, args ...interface{}) (*MyQueryScanRet, bool, error) {
 	if rows, err := conn.Query(ctx, sql, args...); err != nil {
 		return nil, true, errors.Errorf("could not select from db: %v", err)
 	} else {
@@ -317,7 +320,7 @@ func MyQueryScan(ctx context.Context, conn *pgxpool.Pool, sql string, args ...in
 	}
 }
 
-func MyQuery(ctx context.Context, conn *pgxpool.Pool, dstAddr interface{}, sql string, args ...interface{}) (bool, error) {
+func MyQuery(ctx context.Context, conn dbconn, dstAddr interface{}, sql string, args ...interface{}) (bool, error) {
 	barAddrVal := reflect.ValueOf(dstAddr)
 	if rows, err := conn.Query(ctx, sql, args...); err != nil {
 		return true, errors.Errorf("could not select from db: %v", err)

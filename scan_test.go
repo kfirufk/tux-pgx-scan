@@ -362,6 +362,24 @@ func TestBasicTypesInStuctInSlice(t *testing.T) {
 	}
 }
 
+func TestStringPointerArrayParam(t *testing.T) {
+	sqlQuery := "select $1::text[]"
+	var res []*string
+	var param []*string = nil
+	if conn, err := GetDbConnection(); err != nil {
+		t.Errorf("could not connect to database: %v", err)
+	} else {
+		if _, err := MyQuery(context.Background(), conn, &res, sqlQuery, param); err != nil {
+			t.Error(err)
+		} else {
+			if res[0] != nil {
+				t.Errorf("res should be [nil]: '%v'", res)
+			}
+		}
+
+	}
+}
+
 func TestIntVar(t *testing.T) {
 	sqlQuery := "select 123"
 	if conn, err := GetDbConnection(); err != nil {
